@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gym Microservices - Test Client</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; max-width: 980px; }
+    h1 { margin: 0 0 8px; }
+    .muted { color: #666; margin: 0 0 16px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 14px; }
+    label { display:block; font-size: 12px; color:#444; margin-top: 10px; }
+    input, textarea { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; }
+    textarea { min-height: 88px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    button { padding: 9px 12px; border: 1px solid #444; border-radius: 8px; background: #111; color: #fff; cursor:pointer; }
+    button.secondary { background: #fff; color: #111; }
+    .row { display:flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    pre { background: #0b1020; color: #e7f0ff; padding: 12px; border-radius: 10px; overflow:auto; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <h1>Test Client</h1>
+  <p class="muted">Calls the API Gateway at <code>http://localhost:8000</code> (same origin).</p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>1) Register</h2>
+      <label>First name</label>
+      <input id="regFirstName" value="John" />
+      <label>Last name</label>
+      <input id="regLastName" value="Doe" />
+      <label>Email</label>
+      <input id="regEmail" value="john.doe@example.com" />
+      <label>Password</label>
+      <input id="regPassword" type="password" value="password123" />
+      <label>Phone</label>
+      <input id="regPhone" value="+1234567890" />
+      <label>Date of birth (YYYY-MM-DD)</label>
+      <input id="regDob" value="1990-01-01" />
+      <div class="row">
+        <button type="button" id="btnRegister" onclick="document.getElementById('out').textContent='Clicked Register (inline)';">Register</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2) Login</h2>
+      <label>Email</label>
+      <input id="loginEmail" value="john.doe@example.com" />
+      <label>Password</label>
+      <input id="loginPassword" type="password" value="password123" />
+      <div class="row">
+        <button type="button" id="btnLogin" onclick="document.getElementById('out').textContent='Clicked Login (inline)';">Login</button>
+        <button type="button" class="secondary" id="btnClearToken" onclick="document.getElementById('out').textContent='Clicked Clear token (inline)';">Clear token</button>
+      </div>
+      <p class="muted">Token is stored in <code>localStorage</code> (key: <code>jwt_token</code>).</p>
+    </div>
+
+    <div class="card">
+      <h2>3) Profile</h2>
+      <div class="row">
+        <button type="button" id="btnProfile" onclick="document.getElementById('out').textContent='Clicked Get profile (inline)';">Get profile</button>
+      </div>
+      <p class="muted">Calls <code>/api/auth/profile</code> with <code>Authorization: Bearer</code>.</p>
+    </div>
+
+    <div class="card">
+      <h2>4) Create Session</h2>
+      <label>Title</label>
+      <input id="sessTitle" value="Morning Yoga" />
+      <label>Description</label>
+      <input id="sessDesc" value="Energizing session" />
+      <label>Coach ID</label>
+      <input id="sessCoachId" placeholder="Will be filled from login.user.id" />
+      <label>Capacity</label>
+      <input id="sessCapacity" value="15" />
+      <label>Start time (ISO)</label>
+      <input id="sessStart" value="2025-05-15T08:00:00Z" />
+      <label>End time (ISO)</label>
+      <input id="sessEnd" value="2025-05-15T09:00:00Z" />
+      <label>Location</label>
+      <input id="sessLocation" value="Studio A" />
+      <label>Session type</label>
+      <input id="sessType" value="yoga" />
+      <label>Difficulty</label>
+      <input id="sessDifficulty" value="intermediate" />
+      <div class="row">
+        <button type="button" id="btnCreateSession" onclick="document.getElementById('out').textContent='Clicked Create session (inline)';">Create session</button>
+      </div>
+      <p class="muted">If this fails with 500, check if <code>session-service</code> is running (gRPC target).</p>
+    </div>
+
+    <div class="card">
+      <h2>5) Notifications</h2>
+      <label>User ID</label>
+      <input id="notifUserId" placeholder="Will be filled from login.user.id" />
+
+      <div class="row">
+        <button type="button" id="btnListNotifications" onclick="document.getElementById('out').textContent='Clicked List notifications (inline)';">List notifications</button>
+        <button type="button" class="secondary" id="btnMarkAllRead" onclick="document.getElementById('out').textContent='Clicked Mark all read (inline)';">Mark all read</button>
+      </div>
+
+      <label>Notification ID (to mark read)</label>
+      <input id="notifId" placeholder="Paste notification _id" />
+      <div class="row">
+        <button type="button" id="btnMarkRead" onclick="document.getElementById('out').textContent='Clicked Mark read (inline)';">Mark read</button>
+      </div>
+
+      <p class="muted">These calls go through the API Gateway (<code>/api/notifications</code>) and require a JWT token.</p>
+    </div>
+
+    <div class="card">
+      <h2>6) Payment</h2>
+      <div class="row">
+        <button type="button" id="btnListPlans" onclick="document.getElementById('out').textContent='Clicked List plans (inline)';">List plans</button>
+      </div>
+
+      <h3 style="margin:12px 0 6px;">Create plan</h3>
+      <label>Name</label>
+      <input id="planName" value="Monthly Membership" />
+      <label>Description</label>
+      <input id="planDesc" value="Regular monthly gym membership" />
+      <label>Price</label>
+      <input id="planPrice" value="29.99" />
+      <label>Duration (days)</label>
+      <input id="planDuration" value="30" />
+      <label>Features (comma separated)</label>
+      <input id="planFeatures" value="Basic equipment access,Locker room access" />
+      <label>isActive</label>
+      <input id="planIsActive" value="true" />
+      <div class="row">
+        <button type="button" id="btnCreatePlan" onclick="document.getElementById('out').textContent='Clicked Create plan (inline)';">Create plan</button>
+      </div>
+
+      <h3 style="margin:12px 0 6px;">Subscribe</h3>
+      <label>User ID</label>
+      <input id="paymentUserId" placeholder="Will be filled from login.user.id" />
+      <label>Plan ID</label>
+      <input id="paymentPlanId" placeholder="Paste plan id from List plans" />
+      <label>Payment method</label>
+      <input id="paymentMethod" value="credit_card" />
+      <div class="row">
+        <button type="button" id="btnSubscribe" onclick="document.getElementById('out').textContent='Clicked Subscribe (inline)';">Subscribe</button>
+      </div>
+
+      <p class="muted">Calls <code>/api/subscriptions</code> and <code>/api/payments/subscribe</code> via the API Gateway. Subscribe requires JWT.</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <h2>Response</h2>
+    <pre id="out">Ready.</pre>
+  </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const out = document.getElementById('out');
+
+    function setOut(obj) {
+      out.textContent = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+    }
+
+    window.addEventListener('error', function (event) {
+      setOut({
+        error: 'JS runtime error',
+        message: event && event.message ? event.message : String(event),
+      });
+    });
+
+    function getToken() {
+      return localStorage.getItem('jwt_token') || '';
+    }
+
+    function setToken(token) {
+      if (!token) return;
+      localStorage.setItem('jwt_token', token);
+    }
+
+    async function request(path, opts) {
+      const options = opts || {};
+      const method = options.method || 'GET';
+      const body = options.body;
+      const auth = !!options.auth;
+
+      const headers = { 'Content-Type': 'application/json' };
+      if (auth) {
+        const token = getToken();
+        if (!token) throw new Error('No token in localStorage. Login first.');
+        headers['Authorization'] = 'Bearer ' + token;
+      }
+
+      const res = await fetch(path, {
+        method: method,
+        headers: headers,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+
+      const text = await res.text();
+      let json;
+      try {
+        json = text ? JSON.parse(text) : null;
+      } catch (e) {
+        json = { raw: text };
+      }
+
+      if (!res.ok) {
+        const err = new Error('HTTP ' + res.status + ' ' + res.statusText);
+        err.payload = json;
+        throw err;
+      }
+
+      return json;
+    }
+
+    document.getElementById('btnRegister').addEventListener('click', async function () {
+      setOut('Registering...');
+      try {
+        const payload = await request('/api/auth/register', {
+          method: 'POST',
+          body: {
+            firstName: document.getElementById('regFirstName').value,
+            lastName: document.getElementById('regLastName').value,
+            email: document.getElementById('regEmail').value,
+            password: document.getElementById('regPassword').value,
+            phone: document.getElementById('regPhone').value,
+            dateOfBirth: document.getElementById('regDob').value,
+          }
+        });
+        setOut(payload);
+      } catch (e) {
+        setOut({ error: e.message, payload: e.payload || null });
+      }
+    });
+
+    document.getElementById('btnLogin').addEventListener('click', async function () {
+      setOut('Logging in...');
+      try {
+        const payload = await request('/api/auth/login', {
+          method: 'POST',
+          body: {
+            email: document.getElementById('loginEmail').value,
+            password: document.getElementById('loginPassword').value,
+          }
+        });
+
+        if (payload && payload.token) setToken(payload.token);
+        if (payload && payload.user && payload.user.id) {
+          document.getElementById('sessCoachId').value = payload.user.id;
+          document.getElementById('notifUserId').value = payload.user.id;
+          document.getElementById('paymentUserId').value = payload.user.id;
+        }
+
+        setOut(payload);
+      } catch (e) {
+        setOut({ error: e.message, payload: e.payload || null });
+      }
+    });
+
+    document.getElementById('btnClearToken').addEventListener('click', function () {
+      localStorage.removeItem('jwt_token');
+      setOut('Token cleared.');
+    });
+
+    document.getElementById('btnProfile').addEventListener('click', async function () {
+      setOut('Fetching profile...');
+      try {
+        const payload = await request('/api/auth/profile', { auth: true });
+        setOut(payload);
+      } catch (e) {
+        setOut({ error: e.message, payload: e.payload || null });
+      }
+    });
+
+    document.getElementById('btnCreateSession').addEventListener('click', async function () {
+      setOut('Creating session...');
+      try {
+        const payload = await request('/api/sessions', {
+          method: 'POST',
+          auth: true,
+          body: {
+            title: document.getElementById('sessTitle').value,
+            description: document.getElementById('sessDesc').value,
+            coach_id: document.getElementById('sessCoachId').value,
+            capacity: Number(document.getElementById('sessCapacity').value),
+            start_time: document.getElementById('sessStart').value,
+            end_time: document.getElementById('sessEnd').value,
+            location: document.getElementById('sessLocation').value,
+            session_type: document.getElementById('sessType').value,
+            difficulty_level: document.getElementById('sessDifficulty').value,
+          }
+        });
+        setOut(payload);
+      } catch (e) {
+        setOut({ error: e.message, payload: e.payload || null });
+      }
+    });
+
+    document.getElementById('btnListNotifications').addEventListener('click', async function () {
+      setOut('Loading notifications...');
+      try {
+        const userId = document.getElementById('notifUserId').value;
+        if (!userId) throw new Error('Missing userId. Login first or fill User ID.');
+        const payload = await request('/api/notifications/' + encodeURIComponent(userId), { auth: true });
+        setOut(payload);
+      } catch (e) {
+        setOut({ error: e.message, payload: e.payload || null });
+      }
+    });
+
+    document.getElementById('btnMarkRead').addEventListener('click', async function () {
+      setOut('Marking notification as read...');
+      try {
+        const notifId = document.getElementById('notifId').value;
+        if (!notifId) throw new Error('Missing notification id. Paste notification _id first.');
+        const payload = await request('/api/notifications/' + encodeURIComponent(notifId) + '/read', {
+          method: 'PUT',
+          auth: true,
+        });
+        setOut(payload);
+      } catch (e) {
+        setOut({ error: e.message, payload: e.payload || null });
+      }
+    });
+
+    document.getElementById('btnMarkAllRead').addEventListener('click', async function () {
+      setOut('Marking all as read...');
+      try {
+        const userId = document.getElementById('notifUserId').value;
+        if (!userId) throw new Error('Missing userId. Login first or fill User ID.');
+        const payload = await request('/api/notifications/user/' + encodeURIComponent(userId) + '/read-all', {
+          method: 'PUT',
+          auth: true,
+        });
+        setOut(payload);
+      } catch (e) {
+        setOut({ error: e.message, payload: e.payload || null });
+      }
+    });
+
+    document.getElementById('btnListPlans').addEventListener('click', async function () {
+      setOut('Loading subscription plans...');
+      try {
+        const payload = await request('/api/subscriptions');
+        setOut(payload);
+      } catch (e) {
+        setOut({ error: e.message, payload: e.payload || null });
+      }
+    });
+
+    document.getElementById('btnCreatePlan').addEventListener('click', async function () {
+      setOut('Creating subscription plan...');
+      try {
+        const featuresRaw = document.getElementById('planFeatures').value;
+        const features = featuresRaw
+          ? featuresRaw.split(',').map((s) => s.trim()).filter(Boolean)
+          : [];
+
+        const payload = await request('/api/subscriptions', {
+          method: 'POST',
+          auth: true,
+          body: {
+            name: document.getElementById('planName').value,
+            description: document.getElementById('planDesc').value,
+            price: document.getElementById('planPrice').value,
+            duration: document.getElementById('planDuration').value,
+            features,
+            isActive: String(document.getElementById('planIsActive').value).toLowerCase() === 'true',
+          }
+        });
+        setOut(payload);
+      } catch (e) {
+        setOut({ error: e.message, payload: e.payload || null });
+      }
+    });
+
+    document.getElementById('btnSubscribe').addEventListener('click', async function () {
+      setOut('Subscribing...');
+      try {
+        const userId = document.getElementById('paymentUserId').value;
+        const planId = document.getElementById('paymentPlanId').value;
+        const paymentMethod = document.getElementById('paymentMethod').value;
+        if (!userId) throw new Error('Missing userId. Login first.');
+        if (!planId) throw new Error('Missing planId. Click List plans and copy an id.');
+
+        const payload = await request('/api/payments/subscribe', {
+          method: 'POST',
+          auth: true,
+          body: { userId, planId, paymentMethod }
+        });
+        setOut(payload);
+      } catch (e) {
+        setOut({ error: e.message, payload: e.payload || null });
+      }
+    });
+
+    // Basic info
+    const token = getToken();
+    if (token) {
+      setOut('Token found in localStorage. You can click Get profile.');
+    } else {
+      setOut('JS loaded. Click Register or Login.');
+    }
+  });
+</script>
+</body>
+</html>
