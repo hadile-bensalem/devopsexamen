@@ -1,0 +1,133 @@
+pipeline {
+    agent any
+    
+    // Skip default checkout to avoid Git plugin issues
+    options {
+        skipDefaultCheckout()
+    }
+    
+    environment {
+        DOCKER_HUB_REPO = 'hadilbensalem'
+        DOCKER_CREDENTIALS_ID = 'docker-hub-creds'
+        
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Cleaning workspace and cloning...'
+                deleteDir()
+                sh 'git clone https://github.com/hadile-bensalem/devopsexamen.git .'
+            }
+        }
+        
+        stage('Login to Docker Hub') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(
+                        credentialsId: DOCKER_CREDENTIALS_ID,
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )]) {
+                        sh '''
+                            echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('Build and Push Services') {
+            parallel {
+                stage('API Gateway') {
+                    steps {
+                        dir('api-gateway') {
+                            script {
+                                sh """
+                                    docker build -t ${DOCKER_HUB_REPO}/api-gateway:${env.BUILD_NUMBER} .
+                                    docker tag ${DOCKER_HUB_REPO}/api-gateway:${env.BUILD_NUMBER} ${DOCKER_HUB_REPO}/api-gateway:latest
+                                    docker push ${DOCKER_HUB_REPO}/api-gateway:${env.BUILD_NUMBER}
+                                    docker push ${DOCKER_HUB_REPO}/api-gateway:latest
+                                """
+                            }
+                        }
+                    }
+                }
+                
+                stage('User Service') {
+                    steps {
+                        dir('user-service') {
+                            script {
+                                sh """
+                                    docker build -t ${DOCKER_HUB_REPO}/user-service:${env.BUILD_NUMBER} .
+                                    docker tag ${DOCKER_HUB_REPO}/user-service:${env.BUILD_NUMBER} ${DOCKER_HUB_REPO}/user-service:latest
+                                    docker push ${DOCKER_HUB_REPO}/user-service:${env.BUILD_NUMBER}
+                                    docker push ${DOCKER_HUB_REPO}/user-service:latest
+                                """
+                            }
+                        }
+                    }
+                }
+                
+                stage('Session Service') {
+                    steps {
+                        dir('session-service') {
+                            script {
+                                sh """
+                                    docker build -t ${DOCKER_HUB_REPO}/session-service:${env.BUILD_NUMBER} .
+                                    docker tag ${DOCKER_HUB_REPO}/session-service:${env.BUILD_NUMBER} ${DOCKER_HUB_REPO}/session-service:latest
+                                    docker push ${DOCKER_HUB_REPO}/session-service:${env.BUILD_NUMBER}
+                                    docker push ${DOCKER_HUB_REPO}/session-service:latest
+                                """
+                            }
+                        }
+                    }
+                }
+                
+                stage('Payment Service') {
+                    steps {
+                        dir('payment-service') {
+                            script {
+                                sh """
+                                    docker build -t ${DOCKER_HUB_REPO}/payment-service:${env.BUILD_NUMBER} .
+                                    docker tag ${DOCKER_HUB_REPO}/payment-service:${env.BUILD_NUMBER} ${DOCKER_HUB_REPO}/payment-service:latest
+                                    docker push ${DOCKER_HUB_REPO}/payment-service:${env.BUILD_NUMBER}
+                                    docker push ${DOCKER_HUB_REPO}/payment-service:latest
+                                """
+                            }
+                        }
+                    }
+                }
+                
+                stage('Notification Service') {
+                    steps {
+                        dir('notification-service') {
+                            script {
+                                sh """
+                                    docker build -t ${DOCKER_HUB_REPO}/notification-service:${env.BUILD_NUMBER} .
+                                    docker tag ${DOCKER_HUB_REPO}/notification-service:${env.BUILD_NUMBER} ${DOCKER_HUB_REPO}/notification-service:latest
+                                    docker push ${DOCKER_HUB_REPO}/notification-service:${env.BUILD_NUMBER}
+                                    docker push ${DOCKER_HUB_REPO}/notification-service:latest
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo 'Pipeline completed'
+            sh 'docker system prune -f'
+            sh 'docker logout'
+        }
+        success {
+            echo 'Build and Push successful!'
+        }
+        failure {
+            echo 'Build failed.'
+        }
+    }
+}
